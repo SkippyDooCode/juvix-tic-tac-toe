@@ -9,3 +9,4 @@ anoma-build/
 config.yaml
 
 *.log
+build/

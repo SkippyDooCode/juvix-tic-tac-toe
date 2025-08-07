@@ -1,0 +1,7 @@
+--- Entry point for the Terminal Tic Tac Toe application
+--- This module contains the main function that starts the game.
+module src/Main;
+
+import Stdlib.Prelude open;
+
+main : String := "hello, world!";

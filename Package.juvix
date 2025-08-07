@@ -10,4 +10,5 @@ package : Package :=
   defaultPackage@{
     name := "terminal-tic-tac-toe";
     version := mkVersion 0 1 0;
+    main := just "src/Main.juvix";
   };
