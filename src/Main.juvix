@@ -4,4 +4,57 @@ module src/Main;
 
 import Stdlib.Prelude open;
 
-main : String := "hello, world!";
+--- Represents a player in the game (X or O)
+type Player :=
+  | X : Player
+  | O : Player;
+
+open Player;
+
+--- Represents a cell in the board (can be Empty, X, or O)
+type Cell :=
+  | Empty : Cell
+  | X : Cell
+  | O : Cell;
+
+open Cell;
+
+--- The game board is a list of lists of cells
+type Board := List (List Cell);
+
+--- Initialize an empty 3x3 board
+gameBoard : List (List Cell) 
+  := [
+    [Cell.Empty; Cell.Empty; Cell.Empty];
+    [Cell.Empty; Cell.Empty; Cell.Empty];
+    [Cell.Empty; Cell.Empty; Cell.Empty];
+  ];
+
+--- Convert a cell to its string representation
+cellToString (cell : Cell) : String :=
+  case cell of 
+    | Cell.Empty := "_";
+    | Cell.X := "X";
+    | Cell.O := "O";
+
+--- Format a row with proper spacing
+formatRow (row : List Cell) : String :=
+  case row of 
+    | [c1; c2; c3] := cellToString c1 ++str  " | " ++str cellToString c2 ++str " | " ++str cellToString c3;
+    | _ := "";
+
+--- Format the board with horizontal lines
+formatBoard (board : List (List Cell)) : String :=
+  case board of
+    | [r1; r2; r3] := 
+      "\n" ++str formatRow r1 ++str 
+      "\n---------\n" ++str formatRow r2 ++str 
+      "\n---------\n" ++str formatRow r3 ++str "\n";
+    | _ := "";
+
+--- Print the current game board
+printBoard (board : List (List Cell)) : IO := printStringLn (formatBoard board);
+
+main : IO 
+  := printBoard gameBoard;
+end;
