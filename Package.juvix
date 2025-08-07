@@ -1,0 +1,13 @@
+--- My First Juvix Application
+--- Terminal based Tic Tac Toe
+---
+--- Author: Skippy Doo
+module Package;
+
+import PackageDescription.V2 open;
+
+package : Package :=
+  defaultPackage@{
+    name := "terminal-tic-tac-toe";
+    version := mkVersion 0 1 0;
+  };
