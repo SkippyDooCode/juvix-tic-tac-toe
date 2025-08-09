@@ -1,60 +1,231 @@
---- Entry point for the Terminal Tic Tac Toe application
---- This module contains the main function that starts the game.
+--- Terminal Tic Tac Toe Game
+--- A simple Tic Tac Toe game implemented in Juvix
+--- It's my first Juvix project, so it may not following the best practices
+--- but it works :D
+--- 
+--- Author: SkippyDoo
+--- With the help of GPT-5
 module src/Main;
 
 import Stdlib.Prelude open;
 
---- Represents a player in the game (X or O)
-type Player :=
-  | X : Player
-  | O : Player;
+--- Types 
+type Symbol :=
+  | X
+  | O
+  | Empty;
 
-open Player;
+open List;
+open Maybe;
 
---- Represents a cell in the board (can be Empty, X, or O)
-type Cell :=
-  | Empty : Cell
-  | X : Cell
-  | O : Cell;
+type GameState := mk@{
+  board  : List Symbol;
+  player : Symbol;
+};
 
-open Cell;
+--- Helpers
+nextPlayer (s : Symbol) : Symbol :=
+  case s of {
+    | Symbol.X     := Symbol.O
+    | Symbol.O     := Symbol.X
+    | Symbol.Empty := Symbol.X
+  };
 
---- The game board is a list of lists of cells
-type Board := List (List Cell);
+showSymbol (s : Symbol) : String :=
+  case s of {
+    | Symbol.X     := "X"
+    | Symbol.O     := "O"
+    | Symbol.Empty := " "
+  };
 
---- Initialize an empty 3x3 board
-gameBoard : List (List Cell) 
-  := [
-    [Cell.Empty; Cell.Empty; Cell.Empty];
-    [Cell.Empty; Cell.Empty; Cell.Empty];
-    [Cell.Empty; Cell.Empty; Cell.Empty];
+cellString (i : Nat) (s : Symbol) : String :=
+  case s of
+    | Symbol.Empty := natToString (i + 1)
+    | Symbol.X := "X"
+    | Symbol.O := "O";
+
+index {A} (i : Nat) (xs : List A) : Maybe A :=
+  let (pref, suff) := splitAt i xs in
+  case suff of
+    | nil := nothing
+    | (x :: _) := just x;
+
+updateAt {A} (i : Nat) (v : A) (xs : List A) : Maybe (List A) :=
+  let (pref, suff) := splitAt i xs in
+  case suff of
+    | nil := nothing
+    | (_ :: xs2) := just (pref ++ (v :: xs2));
+
+isFilled (s : Symbol) : Bool :=
+  case s of {
+    | Symbol.Empty := false
+    | _    := true
+  };
+
+-- Winning Lines
+-- Each sublist contains indices of the board that form a winning line
+winLines : List (List Nat) :=
+  [ 
+    [0;1;2]; [3;4;5]; [6;7;8];  -- Rows matching
+    [0;3;6]; [1;4;7]; [2;5;8];  -- Columns matching
+    [0;4;8]; [2;4;6]            -- Diagonals matching
   ];
 
---- Convert a cell to its string representation
-cellToString (cell : Cell) : String :=
-  case cell of 
-    | Cell.Empty := "_";
-    | Cell.X := "X";
-    | Cell.O := "O";
+-- Equality without needing Eq Symbol
+eqSymbol (a : Symbol) (b : Symbol) : Bool :=
+  case a of {
+    | Symbol.X :=
+        case b of { | Symbol.X := true | _ := false }
+    | Symbol.O :=
+        case b of { | Symbol.O := true | _ := false }
+    | Symbol.Empty :=
+        case b of { | Symbol.Empty := true | _ := false }
+  };
 
---- Format a row with proper spacing
-formatRow (row : List Cell) : String :=
-  case row of 
-    | [c1; c2; c3] := cellToString c1 ++str  " | " ++str cellToString c2 ++str " | " ++str cellToString c3;
-    | _ := "";
+terminating
+anyEmpty (b : List Symbol) : Bool :=
+  case b of {
+    | nil := false
+    | (x :: xs) :=
+        case x of {
+          | Symbol.Empty := true
+          | _            := anyEmpty xs
+        }
+  };
 
---- Format the board with horizontal lines
-formatBoard (board : List (List Cell)) : String :=
-  case board of
-    | [r1; r2; r3] := 
-      "\n" ++str formatRow r1 ++str 
-      "\n---------\n" ++str formatRow r2 ++str 
-      "\n---------\n" ++str formatRow r3 ++str "\n";
-    | _ := "";
+terminating
+handleInput (st : GameState) (s : String) : IO :=
+  let n := stringToNat s in
+  case ((n >= 1) && (n <= 9)) of {
+    | false := printStringLn "Please enter a number 1–9." >>> loop st
+    | true  :=
+        let
+          idx := sub n 1;
+          b   := GameState.board st;
+        in
+        case index idx b of {
+          | just Symbol.Empty :=
+              case makeMove st n of {
+                | just st' := loop st'
+                | nothing  := printStringLn "Unexpected error. Try again." >>> loop st
+              }
+          | just _  := printStringLn "That cell is occupied. Choose another." >>> loop st
+          | nothing := printStringLn "Invalid index. Try again." >>> loop st
+        }
+  };
 
---- Print the current game board
-printBoard (board : List (List Cell)) : IO := printStringLn (formatBoard board);
+rowString (i j k : Nat) (b : List Symbol) : String :=
+  let a := cellString i (fromMaybe Symbol.Empty (index i b));
+      d := cellString j (fromMaybe Symbol.Empty (index j b));
+      c := cellString k (fromMaybe Symbol.Empty (index k b));
+      sep := " | ";
+      newline := "\n"; in
+  " " ++str a ++str " " ++str sep
+      ++str " " ++str d ++str " " ++str sep
+      ++str " " ++str c ++str " " ++str newline;
 
-main : IO 
-  := printBoard gameBoard;
+showBoard (b : List Symbol) : String :=
+  let bar := "--+---+--\n";
+      r1 := rowString 0 1 2 b;
+      r2 := rowString 3 4 5 b;
+      r3 := rowString 6 7 8 b; in
+  r1 ++str bar ++str r2 ++str bar ++str r3;
+
+prompt (st : GameState) : String :=
+  "\n" ++str showBoard (GameState.board st)
+     ++str "\nPlayer " ++str showSymbol (GameState.player st)
+     ++str ", enter position (1-9): ";
+
+makeMove (st : GameState) (pos1to9 : Nat) : Maybe GameState :=
+  case ((pos1to9 >= 1) && (pos1to9 <= 9)) of {
+    | true :=
+        let
+          idx := sub pos1to9 1;
+          b   := GameState.board st;
+        in
+        case index idx b of {
+          | just Symbol.Empty :=
+              case updateAt idx (GameState.player st) b of {
+                | just b2 :=
+                    just (st@GameState{ board := b2
+                                      ; player := nextPlayer (GameState.player st) })
+                | nothing := nothing
+              }
+          | just _  := nothing      -- << block replacement
+          | nothing := nothing
+        }
+    | false := nothing
+  };
+
+-- STRICT win check: all three equal and not Empty
+lineWinner (b : List Symbol) (triple : List Nat) : Maybe Symbol :=
+  case triple of {
+    | (i :: (j :: (k :: _))) :=
+        let
+          a := fromMaybe Symbol.Empty (index i b);
+          d := fromMaybe Symbol.Empty (index j b);
+          c := fromMaybe Symbol.Empty (index k b);
+        in
+        if
+          | (eqSymbol a d) && (eqSymbol d c) && (isFilled a) := just a
+          | else := nothing
+    | _ := nothing
+  };
+
+terminating
+tryLines (gameBoardList : List Symbol) (ls : List (List Nat)) : Maybe Symbol :=
+  case ls of {
+    | nil := nothing
+    | (l :: ls') :=   
+        case lineWinner gameBoardList l of {  
+          | just s  := just s                     -- found a winner
+          | nothing := tryLines gameBoardList ls' -- continue searching
+        }
+  };
+
+-- Check for a winner or draw
+-- If there is a winner, return that symbol; if not, check for empty cells
+-- If there are empty cells, return nothing (game still in progress)
+-- If no empty cells, return Symbol.Empty (draw)
+winner (gameBoardList : List Symbol) : Maybe Symbol :=
+  case tryLines gameBoardList winLines of {
+    | just s := just s
+    | nothing :=
+        case anyEmpty gameBoardList of {
+          | true  := nothing            -- game still in progress
+          | false := just Symbol.Empty  -- draw (no winner and no empty cells)
+        }
+  };
+
+-- Game logic
+beginState : GameState :=
+  GameState.mk@{
+    board := replicate 9 Symbol.Empty;
+    player := Symbol.X
+  };
+
+-- Main Loop
+terminating
+loop (st : GameState) : IO :=
+  -- Check state, print game result or prompt for input
+  case winner (GameState.board st) of {
+    | just Symbol.Empty :=
+        printStringLn ("\nDraw!\n" ++str showBoard (GameState.board st))
+    | just Symbol.X :=
+        printStringLn
+          ("\nPlayer " ++str showSymbol Symbol.X ++str " wins!\n"
+           ++str showBoard (GameState.board st))
+    | just Symbol.O :=
+        printStringLn
+          ("\nPlayer " ++str showSymbol Symbol.O ++str " wins!\n"
+           ++str showBoard (GameState.board st))
+    | nothing :=
+        printString (prompt st)
+        >>> readLn (handleInput st)
+  };
+
+main : IO :=
+  printStringLn "Tic Tac Toe (Juvix)\n-------------------"
+  >>> loop beginState;
+
 end;
