@@ -3,6 +3,11 @@
 
 A simple terminal based tic tac toe, created by using Juvix. This is just a testing project.
 
+My first time coding in functional programming.
+In my coding journey in almost 10 years+ (7 years active coding), either functional programming sucks or I am just a noob.
+
+To be completely transparent, half of the code was generated and fixed by GPT-5.
+
 ## Run Locally (Linux & Mac)
 
 Note: for windows users, please go to [Microsoft WSL installation guide](https://learn.microsoft.com/en-us/windows/wsl/install)
